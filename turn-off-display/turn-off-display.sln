@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30128.74
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "turn-off-display", "turn-off-display\turn-off-display.vcxproj", "{75F558F3-36C6-401A-90DC-E85CFA4C0C3A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{75F558F3-36C6-401A-90DC-E85CFA4C0C3A}.Debug|x64.ActiveCfg = Debug|x64
+		{75F558F3-36C6-401A-90DC-E85CFA4C0C3A}.Debug|x64.Build.0 = Debug|x64
+		{75F558F3-36C6-401A-90DC-E85CFA4C0C3A}.Release|x64.ActiveCfg = Release|x64
+		{75F558F3-36C6-401A-90DC-E85CFA4C0C3A}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FEC6F3F3-66BB-4C41-AD2D-F56B36A1EEE5}
+	EndGlobalSection
+EndGlobal
