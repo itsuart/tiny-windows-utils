@@ -1,8 +1,75 @@
+#include <cstddef>
+
 #include <Windows.h>
 
-static constexpr int MAX_WIDE_PATH_LENGTH = 32767;
+namespace {
+
+    //returns false if copying failed. Call ::GetLastError to get the error.
+    bool copy_to_clipboard(HWND hwnd, const wchar_t* pText, std::size_t textLength) {
+        const std::size_t textSizeInBytesWithTrailingNull = (textLength + 1) * sizeof(wchar_t);
+        // copy the file name to the clipboard
+        if (::HGLOBAL hGlobal = ::GlobalAlloc(GHND, textSizeInBytesWithTrailingNull)) {
+            bool mustCallGlobalFree = true;
+            if (auto mem = ::GlobalLock(hGlobal)) {
+                ::CopyMemory(mem, pText, textSizeInBytesWithTrailingNull);
+
+                {
+                    const auto nLocksLeft = ::GlobalUnlock(hGlobal);
+                    const auto errCode = ::GetLastError();
+                    if (errCode != NO_ERROR) {
+#ifdef _DEBUG
+                        const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        return false;
+                    }
+                }
+
+                if (::OpenClipboard(hwnd)) {
+                    if (not ::EmptyClipboard()) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        //const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("::OpenClipboard call failed.");
+                    }
+
+                    if (NULL == ::SetClipboardData(CF_UNICODETEXT, hGlobal)) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("SetClipboardData call failed.");
+                    }
+                    else {
+                        //System now owns the data
+                        mustCallGlobalFree = false;
+                    }
+
+                    if (not ::CloseClipboard()) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        //const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("::CloseClipboard call failed.");
+                    }
+
+                }
+            }
+
+            if (mustCallGlobalFree) {
+                ::GlobalFree(hGlobal);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    constexpr int MAX_WIDE_PATH_LENGTH = 32767;
+}
+
+
 void entry_point() {
-    const wchar_t* commandLine = GetCommandLineW();
+    const wchar_t* commandLine = ::GetCommandLineW();
     const wchar_t* argsStart = commandLine;
     size_t argsLength = 0;
     if (commandLine[0] == L'"') {
@@ -51,7 +118,7 @@ void entry_point() {
 
     } else {
         static wchar_t buffer[MAX_WIDE_PATH_LENGTH] = { 0 };
-        auto executablePathLength = GetModuleFileNameW(NULL, buffer, MAX_WIDE_PATH_LENGTH);
+        auto executablePathLength = ::GetModuleFileNameW(NULL, buffer, MAX_WIDE_PATH_LENGTH);
         argsStart += executablePathLength;
     }
 
@@ -61,18 +128,20 @@ void entry_point() {
         argsLength -= 1;
     }
 
-    if (HGLOBAL hGlobal = GlobalAlloc(GHND, argsLength * sizeof(wchar_t))) {
-        if (auto mem = GlobalLock(hGlobal)) {
+    copy_to_clipboard(nullptr, argsStart, argsLength);
 
-            lstrcpyW((wchar_t*)mem, argsStart);
-            GlobalUnlock(hGlobal);
+    if (HGLOBAL hGlobal = ::GlobalAlloc(GHND, argsLength * sizeof(wchar_t))) {
+        if (auto mem = ::GlobalLock(hGlobal)) {
 
-            if (OpenClipboard(NULL)) {
-                SetClipboardData(CF_UNICODETEXT, hGlobal);
-                CloseClipboard();
+            ::lstrcpyW((wchar_t*)mem, argsStart);
+            ::GlobalUnlock(hGlobal);
+
+            if (::OpenClipboard(NULL)) {
+                ::SetClipboardData(CF_UNICODETEXT, hGlobal);
+                ::CloseClipboard();
             }
         }
-        GlobalFree(hGlobal);
+        ::GlobalFree(hGlobal);
     }
-    ExitProcess(0);
+    ::ExitProcess(0);
 }

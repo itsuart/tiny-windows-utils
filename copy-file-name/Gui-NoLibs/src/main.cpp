@@ -1,10 +1,76 @@
 #include <Windows.h>
 #include <cstddef>
 
-bool is_path_separator(wchar_t ch) {
-    return (ch == L'\\' || ch == L'/');
+namespace {
+
+    //returns false if copying failed. Call ::GetLastError to get the error.
+    bool copy_to_clipboard(HWND hwnd, const wchar_t* pText, std::size_t textLength) {
+        const std::size_t textSizeInBytesWithTrailingNull = (textLength + 1) * sizeof(wchar_t);
+        // copy the file name to the clipboard
+        if (::HGLOBAL hGlobal = ::GlobalAlloc(GHND, textSizeInBytesWithTrailingNull)) {
+            bool mustCallGlobalFree = true;
+            if (auto mem = ::GlobalLock(hGlobal)) {
+                ::CopyMemory(mem, pText, textSizeInBytesWithTrailingNull);
+
+                {
+                    const auto nLocksLeft = ::GlobalUnlock(hGlobal);
+                    const auto errCode = ::GetLastError();
+                    if (errCode != NO_ERROR) {
+#ifdef _DEBUG
+                        const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        return false;
+                    }
+                }
+
+                if (::OpenClipboard(hwnd)) {
+                    if (not ::EmptyClipboard()) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        //const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("::OpenClipboard call failed.");
+                    }
+
+                    if (NULL == ::SetClipboardData(CF_UNICODETEXT, hGlobal)) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("SetClipboardData call failed.");
+                    }
+                    else {
+                        //System now owns the data
+                        mustCallGlobalFree = false;
+                    }
+
+                    if (not ::CloseClipboard()) {
+#ifdef _DEBUG
+                        const auto errCode = ::GetLastError();
+                        //const auto errMessage = helpers::get_error_message_a(errCode);
+#endif
+                        ::OutputDebugStringA("::CloseClipboard call failed.");
+                    }
+
+                }
+            }
+
+            if (mustCallGlobalFree) {
+                ::GlobalFree(hGlobal);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    bool is_path_separator(wchar_t ch) {
+        return (ch == L'\\' || ch == L'/');
+    }
+
+    constexpr int MAX_WIDE_PATH_LENGTH = 32767;
 }
-static constexpr int MAX_WIDE_PATH_LENGTH = 32767;
+
+
 void entry_point() {
     const wchar_t* commandLine = ::GetCommandLineW();
     const wchar_t* argsStart = commandLine;
@@ -82,24 +148,13 @@ void entry_point() {
         }
         fileName--;
     }
-    std::size_t nameLengthInChars = argsStart + argsLength - fileName;
 
+    std::size_t nameLengthInChars = argsStart + argsLength - fileName;
     if (fileName[nameLengthInChars - 1] == L'"') { //remove trailing "
         nameLengthInChars -= 1;
     }
 
-    if (HGLOBAL hGlobal = ::GlobalAlloc(GHND, (nameLengthInChars + 1) * sizeof(wchar_t))) {
-        if (auto mem = ::GlobalLock(hGlobal)) {
+    copy_to_clipboard(nullptr, fileName, nameLengthInChars);
 
-            ::lstrcpynW((wchar_t*)mem, fileName, static_cast<int>(nameLengthInChars + 1));
-            ::GlobalUnlock(hGlobal);
-
-            if (::OpenClipboard(nullptr)) {
-                ::SetClipboardData(CF_UNICODETEXT, hGlobal);
-                ::CloseClipboard();
-            }
-        }
-        ::GlobalFree(hGlobal);
-    }
     ::ExitProcess(0);
 }
