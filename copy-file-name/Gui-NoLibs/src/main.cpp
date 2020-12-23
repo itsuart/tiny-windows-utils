@@ -5,12 +5,13 @@ namespace {
 
     //returns false if copying failed. Call ::GetLastError to get the error.
     bool copy_to_clipboard(HWND hwnd, const wchar_t* pText, std::size_t textLength) {
-        const std::size_t textSizeInBytesWithTrailingNull = (textLength + 1) * sizeof(wchar_t);
+        const int textSizeInBytesWithTrailingNull = (int)((textLength + 1) * sizeof(wchar_t));
         // copy the file name to the clipboard
         if (::HGLOBAL hGlobal = ::GlobalAlloc(GHND, textSizeInBytesWithTrailingNull)) {
             bool mustCallGlobalFree = true;
             if (auto mem = ::GlobalLock(hGlobal)) {
-                ::CopyMemory(mem, pText, textSizeInBytesWithTrailingNull);
+                ::lstrcpynA((char*)mem, (char*)pText, textSizeInBytesWithTrailingNull);
+                //::CopyMemory(mem, pText, textSizeInBytesWithTrailingNull);
 
                 {
                     const auto nLocksLeft = ::GlobalUnlock(hGlobal);
@@ -61,6 +62,8 @@ namespace {
             }
             return true;
         }
+
+        return false;
     }
 
     bool is_path_separator(wchar_t ch) {
