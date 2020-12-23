@@ -62,6 +62,8 @@ namespace {
             }
             return true;
         }
+
+        return false;
     }
 
     constexpr int MAX_WIDE_PATH_LENGTH = 32767;
