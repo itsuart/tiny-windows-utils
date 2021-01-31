@@ -74,7 +74,7 @@ namespace {
 
                     if (windowRect.top < monitorRect.top){
                         windowRect.apply_dy(monitorRect.top - windowRect.top);
-                    } else if (windowRect.bottom < monitorRect.bottom){
+                    } else if (windowRect.bottom > monitorRect.bottom){
                         windowRect.apply_dy(monitorRect.bottom - windowRect.bottom);
                     }
 
